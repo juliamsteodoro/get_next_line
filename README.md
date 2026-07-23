@@ -106,16 +106,6 @@ Same rules as every other 42 project — checked with the
      get_next_line_utils.c, com uma descrição curta de cada uma
      (ex: extract_line, update_stash, join_free, etc.) -->
 
-| Helper | Description |
-|---|---|
-| `TODO` | `TODO` |
-
-### Bonus — Multiple file descriptors
-
-<!-- TODO: se fez o bônus, explique brevemente como uma única variável
-     static consegue gerenciar o estado de vários fds ao mesmo tempo
-     (ex: array de ponteiros indexado pelo próprio fd). -->
-
 ---
 
 ## Resources
@@ -127,27 +117,67 @@ Same rules as every other 42 project — checked with the
 - [42 Norminette — GitHub](https://github.com/42School/norminette)
 
 ### AI usage
+### AI usage
 
-<!-- TODO: descreva honestamente. Ex: "AI (Claude) was used in a Socratic
-     mode only — it asked guiding questions about the reading loop, the
-     stash/stop condition, and norminette indentation rules, without
-     writing get_next_line.c/.h code directly. All implementation
-     decisions and code were written by me." -->
+AI (Claude) was used throughout this project's development process for two
+distinct purposes:
 
+- **Norm debugging (`get_next_line.h`):** Claude was given the norminette
+  error output for the header file and, instead of providing a corrected
+  version directly, asked guiding questions about preprocessor nesting rules
+  (e.g. comparing the already-passing `#ifndef GET_NEXT_LINE_H` block to the
+  failing `BUFFER_SIZE` block) so I could work out the correct indentation
+  pattern myself.
+
+- **Algorithm structuring (`get_next_line.c`):** early in the conversation,
+  Claude outlined one possible high-level structure for the function
+  (the general read-loop / extract-line / update-stash approach commonly
+  used to solve this project). At my request, it then switched to a fully
+  Socratic mode for the rest of the design: instead of writing or completing
+  any code, it asked targeted questions about the loop's stop condition, the
+  static variable's initial state, EOF handling, and memory ownership between
+  calls, so I could reason through and write the actual implementation
+  myself.
+
+- **Documentation:** Claude helped scaffold this README.md file (structure,
+  section headers, and formatting) based on the project's `README
+  Requirements` chapter and an existing README of mine (from another 42
+  project) used as a style reference. The factual content specific to this
+  project — function list, algorithm justification, and design choices —
+  was written by me.
+
+No AI-generated code was copied into `get_next_line.c`, `get_next_line.h`,
+or `get_next_line_utils.c`. All function bodies, edge-case handling, and
+memory management logic were designed and written independently.
 ---
 
 ## Algorithm
 
-<!-- Seção obrigatória pelo subject — precisa ser a SUA explicação e
-     justificativa. Roteiro de perguntas pra te ajudar a escrever:
+The implementation follows the classic incremental-read approach commonly
+used to solve this project, structured around a single static buffer
+(referred to here as the *stash*) that persists between successive calls.
 
-     1. Por que usar uma variável static para guardar o "resto" (stash)
-        ainda não retornado? O que quebraria sem ela entre chamadas?
-     2. Qual é a condição exata que faz o loop de read() parar? Por que
-        ler aos poucos (BUFFER_SIZE) em vez do arquivo inteiro de uma vez?
-     3. Como você localiza o fim da linha dentro do stash acumulado?
-     4. Como o restante do buffer (depois do '\n') é preservado pra
-        a próxima chamada, sem vazar memória?
-     5. Como você trata EOF sem '\n' final, fd inválido e erro de read()?
-     6. (Bônus, se aplicável) Como uma única variável static gerencia
-        vários fds sem misturar o estado de cada um? -->
+**1. Static variable (the stash).** A `static char *` variable is used to
+retain, between one call and the next, any characters that were already read
+from the file descriptor but not yet returned as part of a line. Without it,
+each call to `get_next_line` would start from a blank state and the data
+read past the end of the previous line would be lost, making it impossible
+to reconstruct the file's content correctly across multiple calls.
+
+**2. Read loop and stop condition.** Data is read from the file descriptor
+in chunks of `BUFFER_SIZE` bytes at a time, appending each chunk to the
+stash, rather than reading the entire file in a single pass. The loop stops
+under two conditions: as soon as the stash contains a newline character, or
+when `read()` returns that there is nothing left to read from the file
+descriptor (end of file).
+
+**3. Locating the end of the line.** The boundary of the line to be returned
+is determined by searching the stash for the `\n` character. Its position
+marks where the current line ends and where the remaining, unread content
+begins.
+
+**4. Preserving the remainder for the next call.** Once a line has been
+extracted, the content located after the `\n` is copied into a new buffer.
+The previous stash is then freed, and the static variable is reassigned to
+point to this new buffer, ensuring that only the unread portion of the data
+is retained for the next call, with no memory leaks between calls.
