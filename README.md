@@ -117,7 +117,6 @@ Same rules as every other 42 project — checked with the
 - [42 Norminette — GitHub](https://github.com/42School/norminette)
 
 ### AI usage
-### AI usage
 
 AI (Claude) was used throughout this project's development process for two
 distinct purposes:
@@ -149,6 +148,7 @@ distinct purposes:
 No AI-generated code was copied into `get_next_line.c`, `get_next_line.h`,
 or `get_next_line_utils.c`. All function bodies, edge-case handling, and
 memory management logic were designed and written independently.
+
 ---
 
 ## Algorithm
